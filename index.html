@@ -188,6 +188,41 @@
         text-decoration: underline;
       }
 
+      .error-level {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 0.85em;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-left: 10px;
+      }
+
+      .error-level.fatal {
+        background: #dc2626;
+        color: white;
+      }
+
+      .error-level.serious {
+        background: #ea580c;
+        color: white;
+      }
+
+      .error-level.common {
+        background: #d97706;
+        color: white;
+      }
+
+      .error-level.info {
+        background: #059669;
+        color: white;
+      }
+
+      .error-level.unknown {
+        background: #6b7280;
+        color: white;
+      }
+
       @media (max-width: 600px) {
         .header h1 {
           font-size: 2em;
@@ -350,6 +385,9 @@
           // Hide the search section when displaying an error
           document.querySelector(".search-section").style.display = "none";
 
+          // Parse HMS error level
+          const errorLevel = parseHmsErrorLevel(ecode);
+
           // Check if this error code is in the QR codes list
           const isQRCode = qrErrorCodes.includes(ecode.toUpperCase());
           const wikiLinkHtml = isQRCode
@@ -360,7 +398,11 @@
 
           resultDiv.innerHTML = `
             <div class="error-code">
-              <h2>Error Code: ${error.ecode}</h2>
+              <h2>Error Code: ${error.ecode}
+                <span class="error-level ${errorLevel.class}">${
+            errorLevel.name
+          }</span>
+              </h2>
             </div>
             <div class="error-message">
               ${error.intro}
@@ -406,6 +448,34 @@
         return `https://e.bambulab.com/?e=${formatHex(seg1)}${formatHex(
           seg2
         )}${formatHex(seg3)}${formatHex(seg4)}&s=device_hms&lang=en`;
+      }
+
+      // Function to parse HMS error level from error code
+      function parseHmsErrorLevel(ecode) {
+        try {
+          // Convert ecode to 64-bit integer
+          const hms = BigInt("0x" + ecode.padStart(16, "0"));
+
+          // Extract the code portion (lower 32 bits)
+          const code = Number(hms & 0xffffffffn);
+
+          // Extract message level from upper 16 bits of code
+          const msgLevel = (code >> 16) & 0xffff;
+
+          // Map to HMS message level enum
+          const HMS_LEVELS = {
+            0: { name: "UNKNOWN", class: "unknown" },
+            1: { name: "FATAL", class: "fatal" },
+            2: { name: "SERIOUS", class: "serious" },
+            3: { name: "COMMON", class: "common" },
+            4: { name: "INFO", class: "info" },
+          };
+
+          return HMS_LEVELS[msgLevel] || HMS_LEVELS[0];
+        } catch (error) {
+          console.error("Error parsing HMS level:", error);
+          return { name: "UNKNOWN", class: "unknown" };
+        }
       }
 
       function showSearchPrompt() {
