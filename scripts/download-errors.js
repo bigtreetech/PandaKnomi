@@ -3,8 +3,8 @@ const https = require("https");
 
 const url =
   "https://raw.githubusercontent.com/bambulab/BambuStudio/refs/heads/master/resources/hms/hms_en_094.json";
-const hmsLocalFile = "../data/hms_en_094.json";
-const outputFile = "../data/bbl-qr-ecodes.json";
+const hmsLocalFile = "data/hms_en_094.json";
+const outputFile = "data/bbl-qr-ecodes.json";
 
 // Function to convert ecode to HMS link format
 function ecodeToHmsLink(ecode) {
