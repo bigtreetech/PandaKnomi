@@ -1,10 +1,11 @@
 const fs = require("fs");
 const https = require("https");
 
-const url =
+const hmsUrl =
   "https://raw.githubusercontent.com/bambulab/BambuStudio/refs/heads/master/resources/hms/hms_en_094.json";
-const hmsLocalFile = "data/hms_en_094.json";
-const outputFile = "data/bbl-qr-ecodes.json";
+const queryUrl = "https://e.bambulab.com/query.php?lang=en";
+const mergedLocalFile = "data/ecodes.json";
+const outputFile = "data/ecodes-qr.json";
 
 // Function to convert ecode to HMS link format
 function ecodeToHmsLink(ecode) {
@@ -84,27 +85,24 @@ async function checkAllEcodes(ecodes, batchSize = 10, delayMs = 500) {
   return results;
 }
 
-// Function to download HMS JSON file
-function downloadHmsFile(url, filename) {
+// Function to download a JSON file
+function downloadJsonFile(url) {
   return new Promise((resolve, reject) => {
-    console.log(`Downloading HMS file from: ${url}`);
+    console.log(`Downloading JSON from: ${url}`);
+    // Ensure directory exists
 
     https
       .get(url, (response) => {
         if (response.statusCode === 200) {
           let data = "";
-
           response.on("data", (chunk) => {
             data += chunk;
           });
-
           response.on("end", () => {
             try {
-              // Validate JSON before saving
-              JSON.parse(data);
-              fs.writeFileSync(filename, data);
-              console.log(`HMS file saved to: ${filename}`);
-              resolve(data);
+              const json = JSON.parse(data);
+
+              resolve(json);
             } catch (error) {
               reject(new Error(`Invalid JSON data: ${error.message}`));
             }
@@ -122,26 +120,40 @@ function downloadHmsFile(url, filename) {
 // Main execution
 async function main() {
   try {
-    // Download HMS file first
-    const hmsData = await downloadHmsFile(url, hmsLocalFile);
+    // Download both JSON files
+    const hmsData = await downloadJsonFile(hmsUrl);
+    const queryData = await downloadJsonFile(queryUrl);
 
-    // Parse the downloaded data
-    const dataObject = JSON.parse(hmsData);
-    const device_hms = dataObject.data.device_hms.en;
+    // Shallow merge: combine top-level keys, query keys overwrite hms keys if duplicated
+    const mergedJson = { ...hmsData, ...queryData };
+    fs.writeFileSync(mergedLocalFile, JSON.stringify(mergedJson, null, 2));
+    console.log("Merged JSON saved to: data/merged.json");
 
-    console.log(`Total HMS entries: ${device_hms.length}`);
+    // Extract ecode arrays from both
+    const hmsEcodes = Array.isArray(hmsData?.data?.device_hms?.en)
+      ? hmsData.data.device_hms.en
+      : [];
+    const queryEcodes = Array.isArray(queryData?.data?.device_hms?.en)
+      ? queryData.data.device_hms.en
+      : [];
+
+    // Merge and deduplicate ecodes (by ecode string)
+    const mergedEcodes = [
+      ...hmsEcodes,
+      ...queryEcodes.filter(
+        (qe) => !hmsEcodes.some((he) => he.ecode === qe.ecode)
+      ),
+    ];
+
+    console.log(`Total merged HMS entries: ${mergedEcodes.length}`);
 
     // Check all ecodes for their page titles
-    const allResults = await checkAllEcodes(device_hms);
+    const allResults = await checkAllEcodes(mergedEcodes);
 
     // Filter ecodes that are NOT "HMS home page | Bambu Lab Wiki"
     const ecodesWithValidPages = allResults.filter(
       (result) => !result.isHmsHomePage
     );
-    const ecodesWithHmsHomePage = allResults.filter(
-      (result) => result.isHmsHomePage
-    );
-    const ecodesWithErrors = allResults.filter((result) => result.error);
 
     // Extract just the ecodes from valid pages
     const validEcodesArray = ecodesWithValidPages.map((result) => result.ecode);
@@ -150,15 +162,6 @@ async function main() {
     fs.writeFileSync(outputFile, JSON.stringify(validEcodesArray, null, 2));
 
     console.log(`\n[HMS Page Checker] Done!`);
-    console.log(`HMS file downloaded to: ${hmsLocalFile}`);
-    console.log(`Results saved to: ${outputFile}`);
-    console.log(
-      `Array contains ${validEcodesArray.length} ecodes with valid pages`
-    );
-    console.log(
-      `Ecodes redirecting to HMS home page: ${ecodesWithHmsHomePage.length}`
-    );
-    console.log(`Ecodes with errors: ${ecodesWithErrors.length}`);
   } catch (error) {
     console.error("[HMS Page Checker] Error:", error.message);
   }

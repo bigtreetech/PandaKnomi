@@ -295,7 +295,7 @@
       async function loadErrorCodes() {
         try {
           // Load HMS error codes
-          const response = await fetch("data/hms_en_094.json");
+          const response = await fetch("data/ecodes.json");
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
@@ -303,7 +303,7 @@
 
           // Load QR error codes
           try {
-            const qrResponse = await fetch("data/bbl-qr-ecodes.json");
+            const qrResponse = await fetch("data/ecodes-qr.json");
             if (qrResponse.ok) {
               qrErrorCodes = await qrResponse.json();
               console.log("Loaded QR error codes:", qrErrorCodes.length);
