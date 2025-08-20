@@ -1,3 +1,44 @@
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# HTML build and cache
+/dist/
+/build/
+/.cache/
+
+# Editor and IDE files
+.vscode/
+.idea/
+
+# Node modules (if using JS tooling)
+/node_modules/
+
+# Local environment and log files
+.env
+.env.*
+*.log
+*.tmp
+*.bak
+
+# HTML output (if generated)
+*.html
+!/index.html
+
+# Coverage and test output
+coverage/
+*.coverage
+
+# Misc
+Thumbs.db
+
+# Ignore lock files (optional)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 # Ignore build output and cache
 /dist/
 /build/
