@@ -38,6 +38,25 @@ function downloadJsonFile(url) {
   });
 }
 
+// Deep merge: recursively merge hmsData and queryData
+function deepMerge(target, source) {
+  for (const key of Object.keys(source)) {
+    if (
+      source[key] &&
+      typeof source[key] === "object" &&
+      !Array.isArray(source[key]) &&
+      target[key] &&
+      typeof target[key] === "object" &&
+      !Array.isArray(target[key])
+    ) {
+      target[key] = deepMerge({ ...target[key] }, source[key]);
+    } else {
+      target[key] = source[key];
+    }
+  }
+  return target;
+}
+
 // Main execution
 async function main() {
   try {
@@ -45,28 +64,10 @@ async function main() {
     const hmsData = await downloadJsonFile(hmsUrl);
     const queryData = await downloadJsonFile(queryUrl);
 
-    // Shallow merge: combine top-level keys, query keys overwrite hms keys if duplicated
-    const mergedJson = { ...hmsData, ...queryData };
+    const mergedJson = deepMerge({ ...queryData }, hmsData);
+
     fs.writeFileSync(mergedLocalFile, JSON.stringify(mergedJson, null, 2));
     console.log(`Merged JSON saved to: ${mergedLocalFile}`);
-
-    // Extract ecode arrays from both
-    const hmsEcodes = Array.isArray(hmsData?.data?.device_error?.en)
-      ? hmsData.data.device_error.en
-      : [];
-    const queryEcodes = Array.isArray(queryData?.data?.device_error?.en)
-      ? queryData.data.device_error.en
-      : [];
-
-    // Merge and deduplicate ecodes (by ecode string)
-    const mergedEcodes = [
-      ...hmsEcodes,
-      ...queryEcodes.filter(
-        (qe) => !hmsEcodes.some((he) => he.ecode === qe.ecode)
-      ),
-    ];
-
-    console.log(`Total merged  entries: ${mergedEcodes.length}`);
   } catch (error) {
     console.error(error.message);
   }
